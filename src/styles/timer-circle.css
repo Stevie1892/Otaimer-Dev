@@ -1,0 +1,159 @@
+.timer-circle {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 50%;
+  border: 4px solid var(--timer-color, var(--accent));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14% 10% 20%;
+  background: var(--bg-card);
+  position: relative;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.timer-circle:active {
+  transform: scale(0.97);
+  transition: transform 0.1s;
+}
+
+.timer-circle.edit-mode {
+  cursor: grab;
+}
+
+.timer-circle.edit-mode:active {
+  cursor: grabbing;
+  transform: none;
+}
+
+.timer-drag-handle {
+  position: absolute;
+  bottom: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  color: var(--text-muted);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.timer-circle.placeholder {
+  opacity: 0.35;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.timer-circle.ghost {
+  position: fixed;
+  z-index: 250;
+  pointer-events: none;
+  transform: scale(1.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  opacity: 0.9;
+}
+
+.timer-circle.overtime {
+  animation: timer-flash 2s ease-in-out infinite;
+}
+
+@keyframes timer-flash {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--timer-color);
+  }
+  50% {
+    box-shadow: 0 0 25px var(--timer-color), 0 0 50px var(--timer-color);
+  }
+}
+
+.timer-finish {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--timer-color);
+  opacity: 0;
+  line-height: 1;
+  transition: opacity 0.3s;
+}
+
+.timer-circle.overtime .timer-finish {
+  opacity: 1;
+  animation: finish-flash 2s ease-in-out infinite;
+}
+
+@keyframes finish-flash {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.2; }
+}
+
+.timer-circle.running {
+  box-shadow: 0 0 12px var(--timer-color, var(--accent));
+}
+
+.timer-time {
+  font-size: clamp(1.3rem, 6vw, 2.5rem);
+  font-weight: 700;
+  color: var(--timer-color, var(--accent));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  transition: color 0.3s;
+  line-height: 1;
+}
+
+.timer-name {
+  font-size: clamp(0.85rem, 4vw, 1.25rem);
+  color: var(--timer-color, var(--accent));
+  opacity: 0.8;
+  transition: color 0.3s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85%;
+  line-height: 1.3;
+}
+
+.timer-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  padding-bottom: 24px;
+  justify-items: center;
+  align-items: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+.timer-grid > * {
+  width: 100%;
+  max-width: 180px;
+}
+
+.timer-grid-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 1rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+}
+
+/* When odd number of timers (last one alone), center it */
+.timer-grid > *:last-child:nth-child(odd) {
+  grid-column: span 2;
+  justify-self: center;
+}
+
+.timer-edit-mode .timer-grid {
+  touch-action: none;
+}

@@ -1,0 +1,48 @@
+.floating-menu {
+  position: fixed;
+  z-index: 150;
+  min-width: 200px;
+  max-width: 260px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 8px 0;
+  transform-origin: top left;
+  animation: menu-appear 0.15s ease-out;
+}
+
+@keyframes menu-appear {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.floating-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.floating-menu-item:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.floating-menu-item.danger {
+  color: var(--danger);
+}
+
+.floating-menu-item .menu-icon {
+  font-size: 1.1rem;
+  width: 22px;
+  text-align: center;
+}
+
+.floating-menu-item:last-child {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
