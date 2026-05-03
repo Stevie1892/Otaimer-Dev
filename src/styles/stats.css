@@ -508,3 +508,67 @@
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
+
+/* Adjustments Modal */
+.adj-subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.adj-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 32px 0;
+  font-size: 0.9rem;
+}
+
+.adj-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.adj-time {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.adj-amount {
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.adj-type {
+  font-size: 0.8rem;
+}
+
+.adj-summary {
+  padding: 12px 0 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.adj-net {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.adj-counts {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.theme-light .adj-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .adj-summary {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}

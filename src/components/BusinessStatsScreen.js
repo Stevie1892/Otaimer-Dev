@@ -232,11 +232,13 @@ export function createBusinessStatsScreen(onClose) {
     const runningIds = getRunningTimerIds();
 
     // Get all timers that were alive during this period (from lifecycle records)
-    const aliveTimerIds = new Set();
+    const aliveTimerMap = new Map(); // timerId -> lifecycle record
     for (const day of days) {
       const active = getActiveTimersForDate(day);
       for (const lc of active) {
-        aliveTimerIds.add(lc.timerId);
+        if (!aliveTimerMap.has(lc.timerId)) {
+          aliveTimerMap.set(lc.timerId, lc);
+        }
       }
     }
 
@@ -244,7 +246,7 @@ export function createBusinessStatsScreen(onClose) {
     const breakdown = getPerTimerBreakdown(resets);
 
     // Check if we have any data
-    if (breakdown.size === 0 && aliveTimerIds.size === 0) {
+    if (breakdown.size === 0 && aliveTimerMap.size === 0) {
       if (isStatsEmpty()) {
         const empty = document.createElement('div');
         empty.className = 'stats-empty';
@@ -269,7 +271,7 @@ export function createBusinessStatsScreen(onClose) {
     }
 
     // Render per-timer section
-    renderPerTimerBreakdown(breakdown, aliveTimerIds, runningIds);
+    renderPerTimerBreakdown(breakdown, aliveTimerMap, runningIds);
 
     // Clear button
     renderClearButton();
@@ -290,7 +292,14 @@ export function createBusinessStatsScreen(onClose) {
     startInput.type = 'date';
     if (customStartDate) startInput.value = formatDateStr(customStartDate);
     startInput.addEventListener('change', () => {
-      if (startInput.value) customStartDate = new Date(startInput.value + 'T00:00:00');
+      if (startInput.value) {
+        customStartDate = new Date(startInput.value + 'T00:00:00');
+        endInput.min = startInput.value;
+        if (customEndDate && customEndDate < customStartDate) {
+          customEndDate = new Date(startInput.value + 'T23:59:59');
+          endInput.value = startInput.value;
+        }
+      }
     });
     startRow.appendChild(startLabel);
     startRow.appendChild(startInput);
@@ -304,9 +313,18 @@ export function createBusinessStatsScreen(onClose) {
     const endInput = document.createElement('input');
     endInput.className = 'stats-range-input';
     endInput.type = 'date';
+    if (customStartDate) endInput.min = formatDateStr(customStartDate);
     if (customEndDate) endInput.value = formatDateStr(customEndDate);
     endInput.addEventListener('change', () => {
-      if (endInput.value) customEndDate = new Date(endInput.value + 'T23:59:59');
+      if (endInput.value) {
+        const endDate = new Date(endInput.value + 'T23:59:59');
+        if (customStartDate && endDate < customStartDate) {
+          endInput.value = formatDateStr(customStartDate);
+          customEndDate = new Date(formatDateStr(customStartDate) + 'T23:59:59');
+        } else {
+          customEndDate = endDate;
+        }
+      }
     });
     endRow.appendChild(endLabel);
     endRow.appendChild(endInput);
@@ -327,7 +345,7 @@ export function createBusinessStatsScreen(onClose) {
     content.appendChild(picker);
   }
 
-  function renderPerTimerBreakdown(breakdown, aliveTimerIds, runningIds) {
+  function renderPerTimerBreakdown(breakdown, aliveTimerMap, runningIds) {
     const section = document.createElement('div');
     section.className = 'stats-timer-section';
 
@@ -343,11 +361,8 @@ export function createBusinessStatsScreen(onClose) {
     }
 
     // Then: render alive timers with no data (but not running ones already shown)
-    for (const timerId of aliveTimerIds) {
+    for (const [timerId, lc] of aliveTimerMap) {
       if (breakdown.has(timerId)) continue;
-      // Find the lifecycle record to get name/color
-      const lc = getActiveTimersForDate(formatDateStr(new Date())).find(r => r.timerId === timerId);
-      if (!lc) continue;
       const data = {
         timerId,
         name: lc.name,
@@ -356,7 +371,7 @@ export function createBusinessStatsScreen(onClose) {
         totalOvertime: 0,
         avgOvertime: 0
       };
-      const card = renderTimerCard(data, runningIds.has(timerIdToPhysicalId(timerId)));
+      const card = renderTimerCard(data, runningIds.has(lc.physicalId));
       section.appendChild(card);
     }
 

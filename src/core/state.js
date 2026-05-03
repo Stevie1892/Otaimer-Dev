@@ -25,6 +25,7 @@ function makeTimer(overrides = {}) {
     status: 'idle',
     mode: 'countdown',
     order: 0,
+    adjustments: [],
     ...overrides
   };
 }
@@ -69,6 +70,9 @@ export function init() {
     for (const id in state.timers) {
       if (state.timers[id].status === 'running') {
         state.timers[id].status = 'paused';
+      }
+      if (!state.timers[id].adjustments) {
+        state.timers[id].adjustments = [];
       }
     }
   }
@@ -218,7 +222,7 @@ export function renameTimer(id, newName, newColor) {
         cleanLifecycleRecord(currentLifecycle.timerId);
       }
     }
-    const newTimerId = generateId();
+    const newTimerId = 'rn_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
     recordTimerCreated(newTimerId, id, state.settings.currentGroupId, newName, newColor);
   }
 
@@ -260,6 +264,7 @@ export function resetTimer(id) {
   timer.mode = 'countdown';
   timer.remaining = timer.defaultDuration;
   timer.overtime = 0;
+  timer.adjustments = [];
   forceUpdate();
 }
 
@@ -267,6 +272,8 @@ export function addTimerTime(id, ms) {
   const timer = state.timers[id];
   if (!timer || timer.mode !== 'countdown') return;
   timer.remaining += ms;
+  if (!timer.adjustments) timer.adjustments = [];
+  timer.adjustments.push({ type: 'add', amount: ms, ts: Date.now() });
   forceUpdate();
 }
 
@@ -274,6 +281,8 @@ export function subtractTimerTime(id, ms) {
   const timer = state.timers[id];
   if (!timer || timer.mode !== 'countdown') return;
   timer.remaining = Math.max(0, timer.remaining - ms);
+  if (!timer.adjustments) timer.adjustments = [];
+  timer.adjustments.push({ type: 'subtract', amount: ms, ts: Date.now() });
   forceUpdate();
 }
 
@@ -326,6 +335,7 @@ export function resetAllTimers() {
       timer.remaining = state.settings.defaultDuration;
       timer.defaultDuration = state.settings.defaultDuration;
       timer.overtime = 0;
+      timer.adjustments = [];
     }
   });
   forceUpdate();

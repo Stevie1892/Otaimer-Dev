@@ -11,6 +11,7 @@ import { createTimerCircle } from './TimerCircle.js';
 import { createFloatingMenu } from './FloatingMenu.js';
 import { createEditTimerModal } from './EditTimerModal.js';
 import { createConfirmDialog } from './ConfirmDialog.js';
+import { createAdjustmentsModal } from './AdjustmentsModal.js';
 import { createSidebar } from './Sidebar.js';
 import { createBusinessStatsScreen } from './BusinessStatsScreen.js';
 import { createWorktimeStatsScreen } from './WorktimeStatsScreen.js';
@@ -488,6 +489,7 @@ export function createMainScreen() {
     let items = [];
 
     if (timer.status === 'running' && timer.mode === 'countdown') {
+      // 倒计时运行中：加减时间 + 调整记录
       const groupMs = getGroupDurationMs();
       const groupMin = Math.floor(groupMs / 60000);
       const groupSec = Math.round((groupMs % 60000) / 1000);
@@ -497,15 +499,37 @@ export function createMainScreen() {
         { icon: '⏱', label: '增加 1 分钟', onClick: () => addTimerTime(timerId, 60000) },
         { icon: '⏱', label: '增加 2 分钟', onClick: () => addTimerTime(timerId, 120000) },
         { icon: '⏱', label: '自定义时长...', onClick: () => showCustomDurationModal(timerId) },
-        { icon: '−', label: '减 1 分钟', bold: true, onClick: () => subtractTimerTime(timerId, 60000) }
+        { icon: '−', label: '减 1 分钟', bold: true, onClick: () => subtractTimerTime(timerId, 60000) },
+        { icon: '📋', label: '调整记录', onClick: () => showAdjustments(timerId) }
       ];
     } else if (timer.status === 'running' && timer.mode === 'countup') {
+      // 正计时运行中：重置 + 调整记录 + 编辑 + 删除
       items = [
         { icon: '↺', label: '重置倒计时', onClick: () => { resetTimer(timerId); } },
+        { icon: '📋', label: '调整记录', onClick: () => showAdjustments(timerId) },
+        { icon: '✎', label: '编辑名称/颜色', onClick: () => editTimer(timerId) },
+        { icon: '🗑', label: '删除计时器', danger: true, onClick: () => confirmDeleteTimer(timerId) }
+      ];
+    } else if (timer.status === 'paused' && timer.mode === 'countup') {
+      // 正计时暂停：重置 + 调整记录 + 编辑 + 删除
+      items = [
+        { icon: '↺', label: '重置倒计时', onClick: () => { resetTimer(timerId); } },
+        { icon: '📋', label: '调整记录', onClick: () => showAdjustments(timerId) },
+        { icon: '✎', label: '编辑名称/颜色', onClick: () => editTimer(timerId) },
+        { icon: '🗑', label: '删除计时器', danger: true, onClick: () => confirmDeleteTimer(timerId) }
+      ];
+    } else if (timer.status === 'paused' && timer.mode === 'countdown') {
+      // 倒计时暂停：启动倒计时 + 启动正计时 + 调整记录 + 编辑 + 删除
+      const groupDurationMs = getGroupDurationMs();
+      items = [
+        { icon: '▶', label: '启动倒计时 ' + getGroupDurationText(), onClick: () => startCountdown(timerId, groupDurationMs) },
+        { icon: '⏱', label: '启动正计时', onClick: () => setTimerMode(timerId, 'countup') },
+        { icon: '📋', label: '调整记录', onClick: () => showAdjustments(timerId) },
         { icon: '✎', label: '编辑名称/颜色', onClick: () => editTimer(timerId) },
         { icon: '🗑', label: '删除计时器', danger: true, onClick: () => confirmDeleteTimer(timerId) }
       ];
     } else {
+      // idle：启动倒计时 + 启动正计时 + 编辑 + 删除（无调整记录）
       const groupDurationMs = getGroupDurationMs();
       items = [
         { icon: '▶', label: '启动倒计时 ' + getGroupDurationText(), onClick: () => startCountdown(timerId, groupDurationMs) },
@@ -543,6 +567,12 @@ export function createMainScreen() {
       danger: true,
       onConfirm: () => removeTimer(timerId)
     }));
+  }
+
+  function showAdjustments(timerId) {
+    const timer = state.timers[timerId];
+    if (!timer) return;
+    createAdjustmentsModal(timer.name, timer.adjustments || []);
   }
 
   function getCurrentGroupName() {
