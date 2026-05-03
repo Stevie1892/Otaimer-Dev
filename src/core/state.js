@@ -1,4 +1,10 @@
 import { loadState, saveState } from './storage.js';
+import {
+  recordTimerReset, recordTimerCreated, recordTimerClosed,
+  cleanLifecycleRecord, findLifecycleByName, reopenLifecycleRecord,
+  updateLifecycleColor, hasBusinessResets, getActiveLifecycleForPhysical,
+  handleTimerDeletion
+} from './statsTracker.js';
 
 function generateId() {
   return 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
@@ -38,7 +44,8 @@ export const state = {
     defaultDuration: 180000,
     alertMode: 'both',
     currentGroupId: 'default',
-    theme: 'dark'
+    theme: 'dark',
+    workStartTime: null
   },
   groups: [],
   timers: {}
@@ -133,6 +140,7 @@ export function addTimer(options = {}) {
   });
   state.timers[timer.id] = timer;
   group.timerIds.push(timer.id);
+  recordTimerCreated(timer.id, timer.id, groupId, timer.name, timer.color);
   forceUpdate();
   return timer;
 }
@@ -140,6 +148,8 @@ export function addTimer(options = {}) {
 export function removeTimer(id) {
   const timer = state.timers[id];
   if (!timer) return;
+  // Handle lifecycle cleanup before removing
+  handleTimerDeletion(id);
   const group = state.groups.find(g => g.timerIds.includes(id));
   if (group) {
     group.timerIds = group.timerIds.filter(tid => tid !== id);
@@ -155,6 +165,65 @@ export function updateTimer(id, updates) {
   const timer = state.timers[id];
   if (!timer) return;
   Object.assign(timer, updates);
+  forceUpdate();
+}
+
+export function renameTimer(id, newName, newColor) {
+  const timer = state.timers[id];
+  if (!timer) return;
+
+  const nameChanged = timer.name !== newName;
+  const colorChanged = timer.color !== newColor;
+
+  if (!nameChanged && !colorChanged) return;
+
+  if (!nameChanged) {
+    // Only color changed — update lifecycle color, no new timerId
+    const activeLifecycle = getActiveLifecycleForPhysical(id);
+    if (activeLifecycle) {
+      updateLifecycleColor(activeLifecycle.timerId, newColor);
+    }
+    timer.color = newColor;
+    forceUpdate();
+    return;
+  }
+
+  // Name changed — check for rename-back-to-original
+  const existingRecord = findLifecycleByName(id, newName);
+
+  if (existingRecord) {
+    // Rename back to a previous name — redirect to original timerId
+    // Clean up current lifecycle if no business data
+    const currentLifecycle = getActiveLifecycleForPhysical(id);
+    if (currentLifecycle) {
+      if (hasBusinessResets(currentLifecycle.timerId)) {
+        recordTimerClosed(currentLifecycle.timerId, 'renamed');
+      } else {
+        cleanLifecycleRecord(currentLifecycle.timerId);
+      }
+    }
+    // Reopen the historical record
+    reopenLifecycleRecord(existingRecord.timerId);
+    // Update color on the reopened record
+    if (colorChanged) {
+      updateLifecycleColor(existingRecord.timerId, newColor);
+    }
+  } else {
+    // New name — generate new timerId
+    const currentLifecycle = getActiveLifecycleForPhysical(id);
+    if (currentLifecycle) {
+      if (hasBusinessResets(currentLifecycle.timerId)) {
+        recordTimerClosed(currentLifecycle.timerId, 'renamed');
+      } else {
+        cleanLifecycleRecord(currentLifecycle.timerId);
+      }
+    }
+    const newTimerId = generateId();
+    recordTimerCreated(newTimerId, id, state.settings.currentGroupId, newName, newColor);
+  }
+
+  timer.name = newName;
+  timer.color = newColor;
   forceUpdate();
 }
 
@@ -175,6 +244,18 @@ export function toggleTimer(id) {
 export function resetTimer(id) {
   const timer = state.timers[id];
   if (!timer) return;
+  // Record timer completion for stats (countup mode with overtime)
+  if (timer.mode === 'countup' && timer.overtime > 0) {
+    const activeLifecycle = getActiveLifecycleForPhysical(id);
+    if (activeLifecycle) {
+      recordTimerReset(timer.overtime, {
+        timerId: activeLifecycle.timerId,
+        timerName: timer.name,
+        timerColor: timer.color,
+        groupId: state.settings.currentGroupId
+      });
+    }
+  }
   timer.status = 'idle';
   timer.mode = 'countdown';
   timer.remaining = timer.defaultDuration;
@@ -228,6 +309,18 @@ export function resetAllTimers() {
   group.timerIds.forEach(id => {
     const timer = state.timers[id];
     if (timer) {
+      // Record stats before resetting
+      if (timer.mode === 'countup' && timer.overtime > 0) {
+        const activeLifecycle = getActiveLifecycleForPhysical(id);
+        if (activeLifecycle) {
+          recordTimerReset(timer.overtime, {
+            timerId: activeLifecycle.timerId,
+            timerName: timer.name,
+            timerColor: timer.color,
+            groupId: state.settings.currentGroupId
+          });
+        }
+      }
       timer.status = 'idle';
       timer.mode = 'countdown';
       timer.remaining = state.settings.defaultDuration;
@@ -267,6 +360,7 @@ export function removeGroup(id) {
   const group = state.groups.find(g => g.id === id);
   if (!group) return;
   group.timerIds.forEach(tid => {
+    handleTimerDeletion(tid);
     delete state.timers[tid];
   });
   state.groups = state.groups.filter(g => g.id !== id);

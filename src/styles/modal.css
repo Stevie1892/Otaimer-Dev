@@ -3,7 +3,7 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   z-index: 200;
-  animation: fadeIn 0.2s ease;
+  animation: fadeInOnly 0.2s ease;
 }
 
 .modal {

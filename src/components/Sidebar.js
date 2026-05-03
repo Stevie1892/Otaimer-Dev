@@ -7,7 +7,7 @@ import { randomColor } from '../utils/colors.js';
 import { setupLongPress } from '../utils/domHelper.js';
 import { createConfirmDialog } from './ConfirmDialog.js';
 
-export function createSidebar(onSortRequest, onCloseSidebar, pushBackLayer, consumeLayer) {
+export function createSidebar(onSortRequest, onCloseSidebar, pushBackLayer, consumeLayer, onOpenDataStats, onOpenWorktimeStats) {
   const mask = document.createElement('div');
   mask.className = 'sidebar-mask';
   mask.addEventListener('pointerup', close);
@@ -202,6 +202,26 @@ export function createSidebar(onSortRequest, onCloseSidebar, pushBackLayer, cons
     onSortRequest?.();
   });
   actionsSection.appendChild(sortItem);
+
+  const dataStatsItem = document.createElement('button');
+  dataStatsItem.className = 'sidebar-item';
+  dataStatsItem.innerHTML = '<span class="sidebar-item-icon">📊</span> 数据统计';
+  dataStatsItem.addEventListener('pointerup', () => {
+    onCloseSidebar?.();
+    close();
+    onOpenDataStats?.();
+  });
+  actionsSection.appendChild(dataStatsItem);
+
+  const worktimeStatsItem = document.createElement('button');
+  worktimeStatsItem.className = 'sidebar-item';
+  worktimeStatsItem.innerHTML = '<span class="sidebar-item-icon">⏱</span> 工时统计';
+  worktimeStatsItem.addEventListener('pointerup', () => {
+    onCloseSidebar?.();
+    close();
+    onOpenWorktimeStats?.();
+  });
+  actionsSection.appendChild(worktimeStatsItem);
 
   sidebar.appendChild(actionsSection);
 

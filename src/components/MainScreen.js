@@ -2,8 +2,9 @@ import {
   state, onStateChange, getGroupTimers,
   addTimer, removeTimer, toggleTimer, resetTimer,
   addTimerTime, subtractTimerTime, setTimerMode, startCountdown, forceUpdate,
-  reorderTimers
+  reorderTimers, renameTimer
 } from '../core/state.js';
+import { getCurrentSessionElapsed } from '../core/statsTracker.js';
 import { randomColor } from '../utils/colors.js';
 import { setupLongPress } from '../utils/domHelper.js';
 import { createTimerCircle } from './TimerCircle.js';
@@ -11,6 +12,8 @@ import { createFloatingMenu } from './FloatingMenu.js';
 import { createEditTimerModal } from './EditTimerModal.js';
 import { createConfirmDialog } from './ConfirmDialog.js';
 import { createSidebar } from './Sidebar.js';
+import { createBusinessStatsScreen } from './BusinessStatsScreen.js';
+import { createWorktimeStatsScreen } from './WorktimeStatsScreen.js';
 
 export function createMainScreen() {
   const el = document.createElement('div');
@@ -49,11 +52,39 @@ export function createMainScreen() {
     sidebarHandlerIdx = backHandlers.length - 1;
   }
 
+  function openDataStats() {
+    const screen = createBusinessStatsScreen(() => {
+      screen.el.remove();
+      screen.destroy();
+      consumeTopEntry();
+    });
+    pushBack(() => {
+      screen.el.remove();
+      screen.destroy();
+    });
+    document.body.appendChild(screen.el);
+  }
+
+  function openWorktimeStats() {
+    const screen = createWorktimeStatsScreen(() => {
+      screen.el.remove();
+      screen.destroy();
+      consumeTopEntry();
+    });
+    pushBack(() => {
+      screen.el.remove();
+      screen.destroy();
+    });
+    document.body.appendChild(screen.el);
+  }
+
   const sidebar = createSidebar(
     () => { toggleEditMode(); },
     () => { consumeSidebarEntry(); },
     (handler) => { pushBack(handler); },
-    () => { consumeTopEntry(); }
+    () => { consumeTopEntry(); },
+    () => { openDataStats(); },
+    () => { openWorktimeStats(); }
   );
 
   window.addEventListener('otaimer_back', () => {
@@ -123,7 +154,44 @@ export function createMainScreen() {
     }
   });
 
-  header.appendChild(menuBtn);
+  // Work time display (small indicator next to menu button)
+  const workTimeEl = document.createElement('span');
+  workTimeEl.style.cssText = `
+    font-size:0.65rem;color:var(--text-muted);
+    margin-left:-4px;cursor:pointer;white-space:nowrap;
+    padding:4px 8px;border-radius:10px;
+    background:rgba(255,255,255,0.04);
+    font-variant-numeric:tabular-nums;
+  `;
+  workTimeEl.addEventListener('pointerup', (e) => {
+    e.stopPropagation();
+    openWorktimeStats();
+  });
+
+  function updateWorkTime() {
+    const elapsed = getCurrentSessionElapsed();
+    if (elapsed <= 0) {
+      workTimeEl.textContent = '';
+      workTimeEl.style.display = 'none';
+      return;
+    }
+    workTimeEl.style.display = '';
+    const totalMin = Math.floor(elapsed / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    workTimeEl.textContent = h + 'h' + String(m).padStart(2, '0') + 'm';
+  }
+  updateWorkTime();
+
+  // Update work time every 60 seconds
+  const workTimeInterval = setInterval(updateWorkTime, 60000);
+
+  const leftGroup = document.createElement('div');
+  leftGroup.style.cssText = 'display:flex;align-items:center;gap:4px;';
+  leftGroup.appendChild(menuBtn);
+  leftGroup.appendChild(workTimeEl);
+
+  header.appendChild(leftGroup);
   header.appendChild(titleEl);
   header.appendChild(rightBtn);
   el.appendChild(header);
@@ -433,7 +501,7 @@ export function createMainScreen() {
       ];
     } else if (timer.status === 'running' && timer.mode === 'countup') {
       items = [
-        { icon: '↺', label: '重置倒计时', onClick: () => { timer.remaining = timer.defaultDuration; timer.mode = 'countdown'; timer.overtime = 0; timer.status = 'idle'; forceUpdate(); } },
+        { icon: '↺', label: '重置倒计时', onClick: () => { resetTimer(timerId); } },
         { icon: '✎', label: '编辑名称/颜色', onClick: () => editTimer(timerId) },
         { icon: '🗑', label: '删除计时器', danger: true, onClick: () => confirmDeleteTimer(timerId) }
       ];
@@ -457,12 +525,7 @@ export function createMainScreen() {
     const modal = createEditTimerModal(
       timer,
       ({ name, color }) => {
-        const t = state.timers[timerId];
-        if (t) {
-          t.name = name;
-          t.color = color;
-          forceUpdate();
-        }
+        renameTimer(timerId, name, color);
         consumeTopEntry();
       },
       () => { consumeTopEntry(); }
@@ -546,6 +609,7 @@ export function createMainScreen() {
     destroy() {
       unsub();
       gridLongPress.destroy();
+      clearInterval(workTimeInterval);
       circleMap.forEach(circle => circle.destroy());
       circleMap.clear();
     }
