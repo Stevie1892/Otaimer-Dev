@@ -176,6 +176,7 @@ export function getPerTimerBreakdown(resets) {
         timerId: r.timerId,
         name: r.timerName,
         color: r.timerColor,
+        groupId: r.groupId || null,
         count: 0,
         totalOvertime: 0,
         avgOvertime: 0

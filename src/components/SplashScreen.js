@@ -46,7 +46,7 @@ export function createSplashScreen(onStart) {
 
   const version = document.createElement('div');
   version.className = 'splash-version';
-  version.textContent = 'v1.1.1';
+  version.textContent = 'v1.1.2a';
 
   bottom.appendChild(label);
   bottom.appendChild(btn);

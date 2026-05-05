@@ -359,6 +359,69 @@
 }
 
 /* ============================================
+   Grouped Timer Sections (Collapsible)
+   ============================================ */
+
+.stats-group-section {
+  margin-bottom: 16px;
+}
+
+.stats-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stats-group-header:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.stats-group-header-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.stats-group-header-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stats-group-header-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.stats-group-body {
+  padding-top: 8px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
+}
+
+.stats-group-body.collapsed {
+  display: none;
+}
+
+.theme-light .stats-group-header {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.theme-light .stats-group-header:active {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
    Custom Date Range Picker
    ============================================ */
 

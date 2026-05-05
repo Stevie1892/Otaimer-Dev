@@ -345,37 +345,92 @@ export function createBusinessStatsScreen(onClose) {
     content.appendChild(picker);
   }
 
+  function getGroupName(groupId) {
+    if (!groupId) return '未分组';
+    const group = state.groups.find(g => g.id === groupId);
+    return group ? group.name : '未分组';
+  }
+
   function renderPerTimerBreakdown(breakdown, aliveTimerMap, runningIds) {
-    const section = document.createElement('div');
-    section.className = 'stats-timer-section';
+    // Collect all timer entries grouped by groupId
+    const groupMap = new Map(); // groupId -> { name, timers: [] }
 
-    const sectionTitle = document.createElement('div');
-    sectionTitle.className = 'stats-timer-section-title';
-    sectionTitle.textContent = '各计时器明细';
-    section.appendChild(sectionTitle);
-
-    // First: render timers with data
-    for (const [timerId, data] of breakdown) {
-      const card = renderTimerCard(data, runningIds.has(timerIdToPhysicalId(timerId)));
-      section.appendChild(card);
+    function ensureGroup(groupId) {
+      const key = groupId || '__none__';
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { groupId, name: getGroupName(groupId), timers: [] });
+      }
+      return groupMap.get(key);
     }
 
-    // Then: render alive timers with no data (but not running ones already shown)
+    // Timers with data
+    for (const [timerId, data] of breakdown) {
+      const group = ensureGroup(data.groupId);
+      group.timers.push({ data, isRunning: runningIds.has(timerIdToPhysicalId(timerId)) });
+    }
+
+    // Alive timers with no data
     for (const [timerId, lc] of aliveTimerMap) {
       if (breakdown.has(timerId)) continue;
       const data = {
         timerId,
         name: lc.name,
         color: lc.color,
+        groupId: lc.groupId,
         count: 0,
         totalOvertime: 0,
         avgOvertime: 0
       };
-      const card = renderTimerCard(data, runningIds.has(lc.physicalId));
-      section.appendChild(card);
+      const group = ensureGroup(lc.groupId);
+      group.timers.push({ data, isRunning: runningIds.has(lc.physicalId) });
     }
 
-    content.appendChild(section);
+    // Render each group as a collapsible section
+    const currentGroupId = state.settings.currentGroupId;
+    for (const [, group] of groupMap) {
+      const section = document.createElement('div');
+      section.className = 'stats-group-section';
+
+      const isExpanded = (group.groupId === currentGroupId) || (!group.groupId && !groupMap.has(currentGroupId));
+
+      // Header
+      const header = document.createElement('button');
+      header.className = 'stats-group-header';
+
+      const arrow = document.createElement('span');
+      arrow.className = 'stats-group-header-arrow';
+      arrow.textContent = isExpanded ? '▼' : '▶';
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'stats-group-header-name';
+      nameEl.textContent = group.name;
+
+      const countEl = document.createElement('span');
+      countEl.className = 'stats-group-header-count';
+      countEl.textContent = '(' + group.timers.length + '个)';
+
+      header.appendChild(arrow);
+      header.appendChild(nameEl);
+      header.appendChild(countEl);
+
+      // Body
+      const body = document.createElement('div');
+      body.className = 'stats-group-body';
+      if (!isExpanded) body.classList.add('collapsed');
+
+      for (const { data, isRunning } of group.timers) {
+        body.appendChild(renderTimerCard(data, isRunning));
+      }
+
+      header.addEventListener('pointerup', () => {
+        const collapsed = body.classList.toggle('collapsed');
+        arrow.textContent = collapsed ? '▶' : '▼';
+      });
+
+      section.appendChild(header);
+      section.appendChild(body);
+      content.appendChild(section);
+    }
   }
 
   function timerIdToPhysicalId(timerId) {

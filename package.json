@@ -1,6 +1,6 @@
 {
   "name": "otaimer",
-  "version": "1.1.2",
+  "version": "1.1.2a",
   "private": true,
   "description": "粉丝见面会倒计时器",
   "type": "module",

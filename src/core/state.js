@@ -56,26 +56,44 @@ let listeners = new Set();
 let _dirty = false;
 let _persistTimer = null;
 
+const CURRENT_DATA_VERSION = '1.1.2a';
+
+function migrateData() {
+  for (const id in state.timers) {
+    const timer = state.timers[id];
+    if (timer.status === 'running') timer.status = 'paused';
+    if (!timer.status) timer.status = 'idle';
+    if (timer.mode !== 'countdown' && timer.mode !== 'countup') timer.mode = 'countdown';
+    if (typeof timer.order !== 'number') timer.order = 0;
+    if (timer.defaultDuration == null) timer.defaultDuration = state.settings.defaultDuration;
+    if (timer.overtime == null) timer.overtime = 0;
+    if (timer.remaining == null) timer.remaining = timer.defaultDuration;
+    if (!timer.adjustments) timer.adjustments = [];
+  }
+  for (const g of state.groups) {
+    if (g.defaultDuration == null) g.defaultDuration = 180000;
+  }
+  state.settings.dataVersion = CURRENT_DATA_VERSION;
+  forceUpdate();
+}
+
+export let needsWhatsNew = false;
+
 export function init() {
   const stored = loadState();
   if (stored && stored.groups && stored.timers) {
     state.settings = { ...state.settings, ...stored.settings };
     state.groups = stored.groups;
     state.timers = stored.timers;
-
-    for (const g of state.groups) {
-      if (g.defaultDuration == null) g.defaultDuration = 180000;
-    }
-
-    for (const id in state.timers) {
-      if (state.timers[id].status === 'running') {
-        state.timers[id].status = 'paused';
-      }
-      if (!state.timers[id].adjustments) {
-        state.timers[id].adjustments = [];
-      }
-    }
   }
+
+  // 版本迁移
+  if ((state.settings.dataVersion || null) !== CURRENT_DATA_VERSION) {
+    migrateData();
+    needsWhatsNew = true;
+  }
+
+  // 运行时逻辑
   if (state.groups.length === 0) {
     const defaultGroup = makeGroup({ id: 'default', name: '默认分组' });
     state.groups.push(defaultGroup);
@@ -84,7 +102,6 @@ export function init() {
   if (!curGroup) {
     state.settings.currentGroupId = state.groups[0].id;
   }
-  // Sync current group's default to settings
   const activeGroup = state.groups.find(g => g.id === state.settings.currentGroupId);
   if (activeGroup && activeGroup.defaultDuration) {
     state.settings.defaultDuration = activeGroup.defaultDuration;
